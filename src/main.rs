@@ -1,4 +1,5 @@
 use std::{
+    env::current_dir,
     fs,
     io::{prelude::*, BufReader},
     net::{TcpListener, TcpStream},
@@ -26,22 +27,23 @@ fn main() {
 }
 
 fn handle_connection(mut stream: TcpStream) {
+    let current_dir = current_dir().unwrap();
     let buf_read = BufReader::new(&mut stream);
     let head = buf_read.lines().next().unwrap().unwrap_or_else(move |e| {
         println!("There was an error: {:?}", e);
         String::from("")
     });
 
+    let hello = fs::read_to_string(current_dir.join("hello.html")).unwrap();
+    let not_found = fs::read_to_string(current_dir.join("404.html")).unwrap();
+
     let (status, contents) = match &head[..] {
-        "GET / HTTP/1.1" => ("HTTP/1.1 200 OK", fs::read_to_string("hello.html").unwrap()),
+        "GET / HTTP/1.1" => ("HTTP/1.1 200 OK", hello),
         "GET /sleep HTTP/1.1" => {
             thread::sleep(Duration::from_secs(5));
             ("HTTP/1.1 200 OK", fs::read_to_string("hello.html").unwrap())
         }
-        _ => (
-            "HTTP/1.1 404 NOT FOUND",
-            fs::read_to_string("404.html").unwrap(),
-        ),
+        _ => ("HTTP/1.1 404 NOT FOUND", not_found),
     };
 
     let length = contents.len();
